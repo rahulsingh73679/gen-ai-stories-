@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Story Game</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url('your-background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: white;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .choice-btn {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 10px;
+            font-size: 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .choice-btn:hover {
+            background: #0056b3;
+        }
+
+        #story-text {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .restart-btn {
+            margin-top: 10px;
+            display: block;
+            width: 100%;
+            background-color: red;
+            color: white;
+            font-size: 16px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .restart-btn:hover {
+            background-color: darkred;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Mute Button */
+        #mute-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Mute Button -->
+    <button id="mute-btn" onclick="toggleMusic()">🔊</button>
+
+    <div class="container">
+        <h2 class="text-center">Interactive Story Game</h2>
+
+        <!-- Character Creation Form -->
+        <div id="character-creation">
+            <label>Enter Your Hero’s Name:</label>
+            <input type="text" id="hero-name" class="form-control" placeholder="e.g., Alden, Lira">
+
+            <label>Select Gender:</label>
+            <select id="hero-gender" class="form-control">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="non-binary">Non-Binary</option>
+            </select>
+
+            <label>Select Class:</label>
+            <select id="hero-class" class="form-control">
+                <option value="warrior">Warrior</option>
+                <option value="rogue">Rogue</option>
+                <option value="mage">Mage</option>
+            </select>
+
+            <button class="choice-btn" onclick="startGame()">Start Adventure</button>
+        </div>
+
+        <!-- Story Section -->
+        <div id="story-section" class="hidden">
+            <p id="story-text">Loading story...</p>
+            <div id="choices"></div>
+            <button class="restart-btn" onclick="restartGame()">Restart Story</button>
+        </div>
+    </div>
+
+    <!-- Background Music -->
+    <audio id="bg-music" loop>
+        <source src="your-music.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        let storyHistory = [];
+        let character = { name: "", gender: "", class: "" };
+        let musicPlaying = true;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadGame();
+            document.getElementById("bg-music").play();
+        });
+
+        function loadGame() {
+            let savedCharacter = localStorage.getItem("character");
+            let savedStory = localStorage.getItem("storyText");
+            let savedChoices = localStorage.getItem("storyChoices");
+            let savedHistory = localStorage.getItem("storyHistory");
+
+            if (savedCharacter) {
+                character = JSON.parse(savedCharacter);
+                document.getElementById("character-creation").classList.add("hidden");
+                document.getElementById("story-section").classList.remove("hidden");
+            }
+
+            if (savedStory && savedChoices && savedHistory) {
+                document.getElementById("story-text").innerHTML = savedStory;
+                storyHistory = JSON.parse(savedHistory);
+                showChoices(JSON.parse(savedChoices));
+            } else if (!savedCharacter) {
+                document.getElementById("character-creation").classList.remove("hidden");
+                document.getElementById("story-section").classList.add("hidden");
+            }
+        }
+
+        function startGame() {
+            character.name = document.getElementById("hero-name").value || "Unknown Hero";
+            character.gender = document.getElementById("hero-gender").value;
+            character.class = document.getElementById("hero-class").value;
+
+            localStorage.setItem("character", JSON.stringify(character));
+            document.getElementById("character-creation").classList.add("hidden");
+            document.getElementById("story-section").classList.remove("hidden");
+
+            startStory();
+        }
+
+        async function startStory() {
+            const storyText = document.getElementById("story-text");
+            storyText.innerHTML = `Your adventure begins, ${character.name}, a ${character.class}, wandering through the misty woods...`;
+
+            let choices = ["Investigate the sound", "Hide behind the trees", "Search for supplies", "Move forward cautiously"];
+            showChoices(choices);
+            saveGame(storyText.innerHTML, choices, []);
+        }
+
+        function showChoices(options) {
+            const choicesContainer = document.getElementById("choices");
+            choicesContainer.innerHTML = "";
+
+            options.forEach(option => {
+                let button = document.createElement("button");
+                button.textContent = option;
+                button.className = "choice-btn";
+                button.onclick = () => submitChoice(option);
+                choicesContainer.appendChild(button);
+            });
+
+            localStorage.setItem("storyChoices", JSON.stringify(options));
+        }
+
+        function submitChoice(playerChoice) {
+            const storyText = document.getElementById("story-text");
+            storyText.innerHTML = `You chose: <strong>${playerChoice}</strong>. Continuing the adventure...`;
+            storyHistory.push(playerChoice);
+        }
+
+        function saveGame(storyText, choices, history) {
+            localStorage.setItem("storyText", storyText);
+            localStorage.setItem("storyChoices", JSON.stringify(choices));
+            localStorage.setItem("storyHistory", JSON.stringify(history));
+        }
+
+        function restartGame() {
+            localStorage.clear();
+            storyHistory = [];
+            character = {};
+            location.reload();
+        }
+
+        function toggleMusic() {
+            let music = document.getElementById("bg-music");
+            if (musicPlaying) {
+                music.pause();
+                document.getElementById("mute-btn").innerText = "🔇";
+            } else {
+                music.play();
+                document.getElementById("mute-btn").innerText = "🔊";
+            }
+            musicPlaying = !musicPlaying;
+        }
+    </script>
+
+</body>
+</html>
